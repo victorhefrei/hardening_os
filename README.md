@@ -17,17 +17,21 @@ Lister les groups auxquels un utilisateur appartient :
 groups [username]
 ```
 Lister les processus lancés par root :
-
-``` ps -aux | grep root
-
+```
+ ps -aux | grep root
+```
 Lister les processus en cours d'exécution lancés par un utilisateur :
-``` ps -U [username] -u [username] u
+```
+ps -U [username] -u [username] u
 ```
 Déterminer le hash du mot de passe de root
-``` cat /etc/shadow | grep root
-
+```
+cat /etc/shadow | grep root
+```
 Déterminer le hash du mot de passe de votre utilisateur
-``` cat /etc/shadow | [username]
+```
+cat /etc/shadow | [username]
+```
 
 Déterminer l'algorithme utilisé pour le hash du mot de passe :
  -> regarder le début du hash.
@@ -37,35 +41,56 @@ $6$ = sha 512
 
 Déterminer, pour l'utilisateur root : 
  - son shell par défault :
-``` cat /etc/passwd | grep root | cut -d ':' -f 1,7
+```
+cat /etc/passwd | grep root | cut -d ':' -f 1,7
+```
  - le chemin vers son répertoir personnel: 
-``` cat /etc/passwd | grep root | cut -d ':' -f 1,6
+```
+ cat /etc/passwd | grep root | cut -d ':' -f 1,6
+```
 
 Déterminer, pour un utilisateur 
  - son shell par défault
-``` cat /etc/passwd | grep [username] | cut -d ':' -f 1,7
+```
+cat /etc/passwd | grep [username] | cut -d ':' -f 1,7
+```
  - le chemin vers son répertoir personnel
-``` cat /etc/passwd | grep [username] | cut -d ':' -f 1,6
+```
+cat /etc/passwd | grep [username] | cut -d ':' -f 1,6
+```
 
 Afficher la ligne de configuration du fichier qui permet à votre utilisateur d'utiliser sudo : 
-``` cat /etc/sudoers | grep [username]
-
+```
+cat /etc/sudoers | grep [username]
+```
 Creer le user meow :
+```
 sudo adduser meow -g admins -M -s /bin/false
+```
 
-conf pour ls, mat, less et more :
-meow ALL=(ALL) NOPASSWD: /usr/bin/ls, /usr/bin/cat, /usr/bin/less, /usr/bin/more
-
-conf pour le groupe admins
-``` %sys ALL=(ALL) NOPASSWD: /usr/bin/dnf
+configuration du fichier sudoers (avec visudo) pour autoriser meow a executer ls, mat, less et more :
+```
+meow ALL=(vic) NOPASSWD: /usr/bin/ls, /usr/bin/cat, /usr/bin/less, /usr/bin/more
+```
+configuration du fichier sudoers pour le groupe admins
+```
+%sys ALL=(ALL) NOPASSWD: /usr/bin/dnf
+```
 
 conf pour mon user :
-``` [username]  ALL=(ALL)   ALL
+```
+[username]  ALL=(ALL)   ALL
+```
 
 Comment se connecter en root : 
-```sudo -u [username] more /var/log/dnf.log
+```
+sudo -u [username] more /var/log/dnf.log
+```
+
 une fois dans le "more" :
-``` !/bin/bash
+```
+!/bin/bash
+```
 
 On peut ensuite passer root.
 
@@ -73,8 +98,7 @@ configuration "safe" :
 laisser simplement l'accès à /bin/ls et /bin/cat qui permet d'éviter ce contournement.
 
 
-
-###Partie 2
+### Partie 2
 permissions fichiers/dossiers : 
 
 liste utilisateurs :
@@ -91,7 +115,9 @@ conf serveur openssh :
 ```
 ls -l /etc/ssh/ssh_config
 -rw-r--r--
+```
 répertoire personnel utilisateur root :
+```
 ls -l / #regarder le /root
 dr-xr-x---
 ```
@@ -117,7 +143,8 @@ sudo find / -type f -perm -4000 -ls
 ```
 
 Rendre le fichier de configuration du serveur OpenSSH immuable
-```sudo chmod 444 /etc/ssh/ssh_config
+```
+sudo chmod 444 /etc/ssh/ssh_config
 ```
 vérification :
 ```
@@ -138,18 +165,19 @@ déterminer la liste des programmes qui écoutent sur un port tcp et udp :
 ss -tupnla
 ```
 On peux voir avec les commandes suivantes qu'il n'y a pas règles pour les ports précédemment détectés : 
+```
 sudo firewall-cmd --zone=public --query-port=68/tcp
 sudo firewall-cmd --zone=public --query-port=22/tcp
 sudo firewall-cmd --zone=public --query-port=323/udp
-
+```
 Fermer tout les ports à part ssh :
-
+```
 sudo firewall-cmd --zone=public --remove-service=dhcpv6-client
 sudo firewall-cmd --zone=public --remove-service=cockpit
 sudo firewall-cmd --reload
+```
 
-
-#####partie 3 - 2 - 3 a finir
+#partie 3 - 2 - 3 a finir
 
 ### Partie 4
 
@@ -169,7 +197,7 @@ Changer les options de montage pour /tmp
 
 ```
 sudo mount -t tmpfs noexec /tmp
-
+```
 Une fois qu'il est monté, j'ai copié la commande ls dans le /tmp que j'ai renommé "test", et vérifié qu'il était exécutable. J'ai ensuite tenté de l'exécuter mais je ne peux pas.
 
 ### Partie 5
