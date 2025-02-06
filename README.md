@@ -303,7 +303,6 @@ ssh -p 2222 vic@localhost
 ```
 
 
-
 Idées pour sécuriser le serveur SSH :
 - mise en place d'une mfa (multi factor authentication)
 - mettre en place une whitelist pour les postes distants autorisés à se connecter au serveur
@@ -312,3 +311,18 @@ Idées pour sécuriser le serveur SSH :
 - bloquer les tentatives de bruteforce
 
 
+Pour la configuration de fail2ban, on copie le fichier jail.conf en jail.local et on y ajoute ces informations dans la section "sshd"
+```
+enabled = true
+findtime = 300
+maxretry = 7
+```
+
+Verifier la jail de fail2ban
+```
+sudo fail2ban-client status sshd
+```
+Lever le ban
+```
+sudo fail2ban-client set sshd unbanip [ip]
+```
