@@ -1,328 +1,229 @@
-# Compte rendu tp1
+# Compte Rendu TP2
 ## Hardening OS
 
 ### Partie 1
 
-Lister tous les utilisateurs sur la machine :
-``` 
-cat /etc/passwd
+#### 1.Anatomy of a program
+#### file
+
+Commande ls
 ```
-Lister tous les groupes d'utilisateurs :
-``` 
-cat /etc/group
+file /usr/bin/ls
+
+/usr/bin/ls: ELF 64-bit LSB pie executable, x86-64, version 1 (SYSV), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, BuildID[sha1]=1afdd52081d4b8b631f2986e26e69e0b275e159c, for GNU/Linux 3.2.0, stripped
 ```
 
-Lister les groups auxquels un utilisateur appartient :
-``` 
-groups [username]
+Commande ip
 ```
-Lister les processus lancés par root :
-```
- ps -aux | grep root
-```
-Lister les processus en cours d'exécution lancés par un utilisateur :
-```
-ps -U [username] -u [username] u
-```
-Déterminer le hash du mot de passe de root
-```
-cat /etc/shadow | grep root
-```
-Déterminer le hash du mot de passe de votre utilisateur
-```
-cat /etc/shadow | [username]
+file /usr/sbin/ip
+
+/usr/sbin/ip: ELF 64-bit LSB pie executable, x86-64, version 1 (SYSV), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, BuildID[sha1]=77a2f5899f0529f27d87bb29c6b84c535739e1c7, for GNU/Linux 3.2.0, stripped
+
 ```
 
-Déterminer l'algorithme utilisé pour le hash du mot de passe :
- -> regarder le début du hash.
-$1$ = md5
-$5$ = sha 256
-$6$ = sha 512
-
-Déterminer, pour l'utilisateur root : 
- - son shell par défault :
+Fichier mp3
 ```
-cat /etc/passwd | grep root | cut -d ':' -f 1,7
-```
- - le chemin vers son répertoir personnel: 
-```
- cat /etc/passwd | grep root | cut -d ':' -f 1,6
+file song.mp3
+song.mp3: Audio file with ID3 version 2.3.0, contains:MPEG ADTS, layer III, v1, 320 kbps, 44.1 kHz, JntStereo
 ```
 
-Déterminer, pour un utilisateur 
- - son shell par défault
-```
-cat /etc/passwd | grep [username] | cut -d ':' -f 1,7
-```
- - le chemin vers son répertoir personnel
-```
-cat /etc/passwd | grep [username] | cut -d ':' -f 1,6
-```
+#### readelf
 
-Afficher la ligne de configuration du fichier qui permet à votre utilisateur d'utiliser sudo : 
+Adresse de commencement du code du programme :
 ```
-cat /etc/sudoers | grep [username]
+readelf -S /usr/bin/ls
 ```
-Creer le user meow :
-```
-sudo adduser meow -g admins -M -s /bin/false
-```
+La partie .texte commence à : 0000000000004d50
 
-configuration du fichier sudoers (avec visudo) pour autoriser meow a executer ls, mat, less et more :
+#### ldd
 ```
-meow ALL=(vic) NOPASSWD: /usr/bin/ls, /usr/bin/cat, /usr/bin/less, /usr/bin/more
+ldd /usr/bin/ls
 ```
-configuration du fichier sudoers pour le groupe admins
-```
-%sys ALL=(ALL) NOPASSWD: /usr/bin/dnf
-```
+        alinux-vdso.so.1 (0x00007fffac5ef000)
+        libselinux.so.1 => /lib64/libselinux.so.1 (0x00007f8f77e64000)
+        libcap.so.2 => /lib64/libcap.so.2 (0x00007f8f77e5a000)
+        libc.so.6 => /lib64/libc.so.6 (0x00007f8f77c00000)
+        libpcre2-8.so.0 => /lib64/libpcre2-8.so.0 (0x00007f8f77b64000)
+        /lib64/ld-linux-x86-64.so.2 (0x00007f8f77ebb000)
 
-conf pour mon user :
-```
-[username]  ALL=(ALL)   ALL
-```
+libc.so.6 => /lib64/libc.so.6 (0x00007f8f77c00000) est la Glibc.
+https://fr.wikipedia.org/wiki/GNU_C_Library
 
-Comment se connecter en root : 
-```
-sudo -u [username] more /var/log/dnf.log
-```
-
-une fois dans le "more" :
-```
-!/bin/bash
-```
-
-On peut ensuite passer root.
-
-configuration "safe" : 
-laisser simplement l'accès à /bin/ls et /bin/cat qui permet d'éviter ce contournement.
+#### 2.Syscalls basics
 
 
-### Partie 2
-permissions fichiers/dossiers : 
+A.syscalls :
 
-liste utilisateurs :
+- Lire un fichier stocké sur un disque :
+|%rax|name|utility|
+|:-:|:-:|:-|
+|0|read|lire des fichiers stockés sur un disque|
+|1|write|ecrire dans un fichier stocké sur disque|
+|59|execve|executer des processes/programmes|
+|57|fork|créér un nouveau process|
+
+B.objdump :
+
+afficher le contenu de la section .text
 ```
-ls -l /etc/passwd
--rw-r--r--
+objdump -s -j .text /usr/bin/ls -d
 ```
-hashes des mots de passe utilisateurs :
-```
-ls -l /etc/shadow
-----------
-```
-conf serveur openssh :
-```
-ls -l /etc/ssh/ssh_config
--rw-r--r--
-```
-répertoire personnel utilisateur root :
-```
-ls -l / #regarder le /root
-dr-xr-x---
-```
-répertoire personnel de votre utilisateur :
-```
-ls -l $HOME/..
-drwx------
-```
-programme ls :
-```
-ls -l /bin/ls
--rwxr-xr-x
-```
-programme systemctl :
-```
-ls -l /bin/systemctl
--rwxr-xr-x
+Lignes contenant l'instruction call :
+ ```
+
+objdump -s -j .text /usr/bin/ls -d | grep "call"
+
+171e8:       e8 03 fe ff ff          callq  16ff0 <_obstack_memory_used@@Base+0x66e0>
+16974:       e8 07 e0 fe ff          callq  4980 <memset@plt>
+16826:       e8 45 e2 fe ff          callq  4a70 <memcpy@plt>
+10819:       e8 32 b9 ff ff          callq  c150 <__sprintf_chk@plt+0x7410>
+108a4:       ff d0                   callq  *%rax
+108cd:       ff d0                   callq  *%rax
+1098e:       e8 7d 40 ff ff          callq  4a10 <strcmp@plt>
 ```
 
-Lister les programmes qui ont le bit suid activé : 
+Lignes contenant l'instruction syscall :
+
 ```
-sudo find / -type f -perm -4000 -ls
+objdump -s -j .text /usr/bin/ls -d | grep "syscall"
+```
+La commande ne retourne aucune information, il n'y a donc pas de syscall dans ls.
+
+instruction syscall dans Glibc 
+```
+objdump -s -d -j .text /usr/lib64/libc.so.6
 ```
 
-Rendre le fichier de configuration du serveur OpenSSH immuable
+Trouver l'instruction syscall qui execute le syscall open :
+
 ```
-sudo chmod 444 /etc/ssh/ssh_config
-```
-vérification :
-```
-ls -l /etc/ssh/ssh_config 
--r--r--r--
+objdump -s -d -j .text /usr/lib64/libc.so.6 | grep "syscall" -B 3
+
+  127e95:       b8 03 00 00 00          mov    $0x3,%eax
+  127e9a:       8b 7d a0                mov    -0x60(%rbp),%edi
+  127e9d:       0f 05                   syscall
+
+On trouve cette occurence de syscall qui appelle la variable contenant la valeur 3, qui est l'instruction syscall "open".
 ```
 
-restreindre l'accès au fichier "dont_readme.txt"
-```
-chmod 600 /tmp/dont_readme.txt
-```
-meow ne peux pas lire le fichier tandis que root peux.
+### Partie 2 : Observe
 
-### partie 3
+#### 1.strace
 
-déterminer la liste des programmes qui écoutent sur un port tcp et udp :
+strace de ls
 ```
-ss -tupnla
+strace ls dossier_de_trucs
+
+#syscall d'écriture du résultat :
+
+write(1, "autres_trucs_en_vrac  fichier_qu"..., 53autres_trucs_en_vrac  fichier_qui_contient_des_trucs
+) = 53
+
 ```
-On peux voir avec les commandes suivantes qu'il n'y a pas règles pour les ports précédemment détectés : 
+strace de cat
 ```
-sudo firewall-cmd --zone=public --query-port=68/tcp
-sudo firewall-cmd --zone=public --query-port=22/tcp
-sudo firewall-cmd --zone=public --query-port=323/udp
-```
-Fermer tout les ports à part ssh :
-```
-sudo firewall-cmd --zone=public --remove-service=dhcpv6-client
-sudo firewall-cmd --zone=public --remove-service=cockpit
-sudo firewall-cmd --reload
+strace cat dossier_de_trucs/fichier_qui_contient_des_trucs
+
+openat(AT_FDCWD, "dossier_de_trucs/fichier_qui_contient_des_trucs", O_RDONLY) = 3
+
+#ecriture des résultats dans le terminal
+write(1, "des trucs\n", 10des trucs
+)             = 10
+
 ```
 
-#partie 3 - 2 - 3 a finir
+strace de curl efrei.fr
+```
+strace -c curl efrei.fr
+```
+
+#### 2.sysdig
+
+sysdig pour ls :
+```
+sysdig proc.name=ls
+#on tape ls dans un second terminal
+
+#ligne qui ecrit une sortie dans le terminal
+
+2039 18:10:34.403327526 0 ls (6317.6317) < write res=31 data=fichier_qui_contient_des_trucs
+
+```
+
+sysdig pour cat
+```
+sysdig proc.name=cat
+
+#syscall qui demande l'ouverture du fichier
+1070 18:20:07.408883391 0 cat (6363.6363) < openat fd=3(<f>/home/vic/dossier_de_trucs/fichier_qui_contient_des_trucs) dirfd=-100(AT_FDCWD) name=dossier_de_trucs/fichier_qui_contient_des_trucs(/home/vic/dossier_de_trucs/fichier_qui_contient_des_trucs) flags=1(O_RDONLY) mode=0 dev=FD00 ino=215897
+
+#syscall qui ecrit le contenu du fichier dans le terminal
+1082 18:20:07.409164408 0 cat (6363.6363) < write res=10 data=des trucs.
+
+```
+sysdig pour tracer les syscall de mon user
+```
+sysdig user.name=vic
+```
+
+2.NGINX Tracing
+
+```
+sysdig proc.name=nginx
+
+#lancer le service nginx manuellement dans un second terminal
+/usr/sbin/nginx
+```
+Voici les syscalls repérés lors du sysdig de nginx :
+epoll_wait
+accept4
+recvfrom
+close
+switch
+epoll_ctl
+setsockopt
+write
+sendfile
+writev
+fstat
+newfstatat
+openat
+
+3.NGINX Hardening
+
+Ajout de cette ligne dans la configuration du service :
+```
+[Service]
+SystemCallFilter=epoll_wait accept4 recvfrom close switch epoll_ctl setsockopt write sendfile writev fstat newfstatat openat
+```
+
 
 ### Partie 4
 
-Déterminer la liste des partitions du système :
-```
-lsblk
-```
-Pour la partition montée sur /, on peut voir dans le retour de la commande "lsblk" qu'il s'agit de la partition sda2/[hostname]-root pour mon os.
+#### 1.Test
 
-Déterminer les options de montage de la partition /tmp
+Ouverture du port pour le fonctionnement de l'app :
+```
+sudo firewall-cmd --zone=public --add-port=13337/tcp --permanent
 
 ```
-mount | grep tmp
-```
 
-Changer les options de montage pour /tmp
+Fichier calculatrice.service
+```
+[unit]
+Description=Calc nc eval
 
-```
-sudo mount -t tmpfs noexec /tmp
-```
-Une fois qu'il est monté, j'ai copié la commande ls dans le /tmp que j'ai renommé "test", et vérifié qu'il était exécutable. J'ai ensuite tenté de l'exécuter mais je ne peux pas.
-
-### Partie 5
-
-Afficher tout les programmes en cours d'exécution :
-```
-ps aux
-```
-Afficher l'identifiant du processus openssh :
-```
-ps aux | grep sshd
-```
-Le PID du serveur ssh est 738.
-
-Changer le port d'écoute du serveur OpenSSH :
-Dans le fichier /etc/ssh/sshd_config
-```
-port=2341
-```
-
-Il est parfois utile de changer le port pour éviter que les attaquant sachent qu'un serveur ssh est disponible lorsqu'ils font un scan des ports classique.
-
-
-Configuration d'une authentification par clé :
-```
-#Sur la machine locale
-ssh-keygen
-
-ssh-copy-id -i ~/.ssh/id_ed25519.pub -p 2341 username@server_ip
-
-#fichier conf du serveur ssh /etc/ssh/sshd_config
-PubKeyAuthentication yes
-```
-
-Désactiver la connexion par password :
-
-```
-#Fichier /etc/ssh/sshd_config
-
-PasswordAuthentication no
-```
-
-Désactiver la connexion root :
-```
-#Fichier /etc/ssh/sshd_config
-PermitRootLogin no
-```
-
-### Mise en place d'une connexion SSH via certificat :
-
-Génération de la clé SSH du serveur  
-```
-ssh-keygen -t rsa -b 4096 -f /etc/ssh/ssh_host_rsa_key -N ""
-```
-
-Génération de la paire de clés du CA hôte  
-```
-ssh-keygen -t rsa -b 4096 -f ~/host_ca -N ""
-```
-
-Signature de la clé hôte avec le CA  
-```
-sudo ssh-keygen -s ~/host_ca -I rocky_tp -h -n localhost -V +52w /etc/ssh/ssh_host_rsa_key.pub
-```
-
-Déplacement et configuration du CA hôte sur le serveur  
-```
-sudo mkdir -p /etc/ssh/certs
-sudo mv ~/host_ca.pub /etc/ssh/certs/
-sudo chmod 644 /etc/ssh/certs/host_ca.pub
-```
-
-Ajout de la configuration du serveur SSH  
-```
-HostCertificate /etc/ssh/ssh_host_rsa_key-cert.pub
-TrustedUserCAKeys /etc/ssh/certs/host_ca.pub
-```
-
-Redémarrage du service SSH  
-```
-sudo systemctl restart ssh
-```
-
-Copie de la clé publique du CA vers le client  
-```
-scp -P 2222 /etc/ssh/certs/host_ca.pub vic@localhost:/tmp/
-```
-
-Déplacement et permission de la clé CA sur le client  
-```
-mv /tmp/host_ca.pub ~/.ssh/
-chmod 644 ~/.ssh/host_ca.pub
-```
-
-Ajout du CA aux hôtes connus du client  
-```
-echo "@cert-authority * $(cat ~/.ssh/host_ca.pub)" >> ~/.ssh/known_hosts
-```
-
-Test de la connexion SSH  
-```
-ssh -p 2222 vic@localhost
+[Service]
+ExecStart=/usr/bin/python3 /opt/calc.py
+Restart=always
 ```
 
 
-Idées pour sécuriser le serveur SSH :
-- mise en place d'une mfa (multi factor authentication)
-- mettre en place une whitelist pour les postes distants autorisés à se connecter au serveur
-- limiter l'accès au système de fichiers pour les utilisateurs
-- limiter les commandes disponibles pour les utilisateurs
-- bloquer les tentatives de bruteforce
+#### 3. Hack
 
 
-Pour la configuration de fail2ban, on copie le fichier jail.conf en jail.local et on y ajoute ces informations dans la section "sshd"
-```
-enabled = true
-findtime = 300
-maxretry = 7
-```
 
-Verifier la jail de fail2ban
-```
-sudo fail2ban-client status sshd
-```
-Lever le ban
-```
-sudo fail2ban-client set sshd unbanip [ip]
-```
+
+
+
+
