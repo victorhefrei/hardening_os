@@ -97,7 +97,7 @@ Match User imsad
 rooted
 
 #Pour renforcer l'illusion qu'il est dans un environnement classique, on peut copier différentes commandes comme ls, et créer un répertoire pour cet user
-
+```
 Connexion ssh :
 Créer une clé avec ssh-keygen, et l'ajouter dans le dossier .ssh du répertoir home du user immsad dans le chroot.
 ajouter à la conf ssh :
